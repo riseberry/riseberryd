@@ -3,11 +3,12 @@ package main
 import (
 	"log"
 	"net/http"
+	"time"
 )
 
 func LogStart(args []string, level int) {
 	if level > 0 {
-		log.Printf("started with args: %#v", args)
+		log.Printf("started args=%#v", args)
 	}
 }
 
@@ -62,9 +63,10 @@ func (c *loggedClock) Get() Alarm {
 	return alarm
 }
 
-func (c *loggedClock) Set(alarm Alarm) {
-	c.clock.Set(alarm)
-	log.Printf("clock: set alarm=%#v", alarm)
+func (c *loggedClock) Set(alarm Alarm) time.Duration {
+	duration := c.clock.Set(alarm)
+	log.Printf("clock: set alarm=%#v duration=%s", alarm, duration)
+	return duration
 }
 
 func LoggedSound(sound Sound, level int) Sound {
@@ -79,6 +81,7 @@ type loggedSound struct {
 }
 
 func (s *loggedSound) Play() error {
-	log.Printf("playing sound")
-	return s.Play()
+	err := s.sound.Play()
+	log.Printf("played sound err=%s", err)
+	return err
 }

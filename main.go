@@ -5,6 +5,7 @@ package main
 import (
 	"encoding/json"
 	"flag"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -25,7 +26,7 @@ func run() error {
 	var (
 		httpAddr  = flag.String("http.addr", ":80", "HTTP addr to listen on")
 		assetsDir = flag.String("assets.dir", "./public", "Directory to serve assets from")
-		soundCmd  = flag.String("sound.cmd", "say you did it", "Command for playing alarm sound")
+		soundCmd  = flag.String("sound.cmd", "omxplayer ./public/alarm.mp3", "Command for playing alarm sound")
 		logLevel  = flag.Int("log.level", 1, "0 = off, 1 = normal, 2 = debug")
 	)
 	flag.Parse()
@@ -50,14 +51,15 @@ func NewClock(sound Sound) Clock {
 type Clock interface {
 	// Get returns the Alarm that is currently set.
 	Get() Alarm
-	// Set sets the current alarm.
-	Set(Alarm)
+	// Set sets the current alarm, returns time to alarm.
+	Set(Alarm) time.Duration
 }
 
 // Alarm holds the settings that make up an alarm.
 type Alarm struct {
 	Hour    int  `json:"hour"`
 	Minute  int  `json:"minute"`
+	Zone    int  `json:"zone"`
 	Enabled bool `json:"enabled"`
 }
 
@@ -77,7 +79,7 @@ func (c *clock) Get() Alarm {
 }
 
 // Set is part of the clock interface.
-func (c *clock) Set(alarm Alarm) {
+func (c *clock) Set(alarm Alarm) time.Duration {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	// stop active alarm, if any
@@ -85,17 +87,19 @@ func (c *clock) Set(alarm Alarm) {
 		c.timer.Stop()
 		c.timer = nil
 	}
+	// determine the time the alarm should go off
+	now := time.Now()
+	zone := time.FixedZone("", alarm.Zone)
+	when := time.Date(now.Year(), now.Month(), now.Day(), alarm.Hour, alarm.Minute, 0, 0, zone)
+	fmt.Printf("%s\n", when)
+	// if the time is in the past, this means the next day is meant
+	if when.Before(now) {
+		when = when.AddDate(0, 0, 1)
+	}
+	duration := when.Sub(now)
 	// start new alarm, if needed
 	if alarm.Enabled {
-		now := time.Now()
-		// determine the time the alarm should go off
-		when := time.Date(now.Year(), now.Month(), now.Day(), alarm.Hour, alarm.Minute, 0, 0, time.Local)
-		// if the time is in the past, this means the next day is meant
-		if when.Before(now) {
-			when = when.AddDate(0, 0, 1)
-		}
-		// set a timer for playing the alarm sound
-		c.timer = time.AfterFunc(when.Sub(now), func() {
+		c.timer = time.AfterFunc(duration, func() {
 			for {
 				c.sound.Play()
 			}
@@ -103,6 +107,7 @@ func (c *clock) Set(alarm Alarm) {
 	}
 	// update the alarm
 	c.alarm = alarm
+	return duration
 }
 
 // NewAlarmHandler returns a new http handler that allows setting/getting the

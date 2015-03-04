@@ -22,6 +22,7 @@ $(function() {
     return {
       hour: time[0],
       minute: time[1],
+      zone: -(new Date()).getTimezoneOffset()*60,
       enabled: $enabled.prop('checked'),
     }
   }
