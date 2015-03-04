@@ -1,16 +1,20 @@
 $(function() {
+  var $status = $('.status');
   $.getJSON('/alarm', render);
   $('button').click(function() {
+    $status.fadeOut();
     $.ajax({
       type: 'PUT',
       url: '/alarm',
       data: JSON.stringify(parse()),
       contentType: "application/json; charset=utf-8",
       dataType: "json",
-      success: render,
+      success: function(alarm) {
+        render(alarm);
+        $status.text('Saved').fadeIn();
+      },
     });
   });
-
   var $time = $('input[type=time]');
   var $enabled = $('input[type=checkbox]');
   function parse() {
@@ -22,8 +26,14 @@ $(function() {
     }
   }
   function render(alarm) {
-    $time.val(alarm.hour+':'+alarm.minute)
+    $time.val(zeroPad(alarm.hour)+':'+zeroPad(alarm.minute))
     $enabled.prop('checked', alarm.enabled)
+  }
+  function zeroPad(num) {
+    num = ''+num;
+    return (num.length == 1)
+      ? '0' + num
+      : num;
   }
 })
 
