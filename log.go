@@ -66,3 +66,19 @@ func (c *loggedClock) Set(alarm Alarm) {
 	c.clock.Set(alarm)
 	log.Printf("clock: set alarm=%#v", alarm)
 }
+
+func LoggedSound(sound Sound, level int) Sound {
+	if level <= 0 {
+		return sound
+	}
+	return &loggedSound{sound: sound}
+}
+
+type loggedSound struct {
+	sound Sound
+}
+
+func (s *loggedSound) Play() error {
+	log.Printf("playing sound")
+	return s.Play()
+}

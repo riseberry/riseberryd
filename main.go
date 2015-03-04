@@ -23,19 +23,21 @@ func main() {
 // run does all the work
 func run() error {
 	var (
-		addr     = flag.String("addr", ":80", "HTTP addr to listen on")
-		assets   = flag.String("assets", "./public", "Directory to serve assets from")
-		sound    = flag.String("sound", "say you did it", "Command for playing alarm sound")
-		logLevel = flag.Int("log.level", 1, "0 = off, 1 = normal, 2 = debug")
+		httpAddr  = flag.String("http.addr", ":80", "HTTP addr to listen on")
+		assetsDir = flag.String("assets.dir", "./public", "Directory to serve assets from")
+		soundCmd  = flag.String("sound.cmd", "say you did it", "Command for playing alarm sound")
+		logLevel  = flag.Int("log.level", 1, "0 = off, 1 = normal, 2 = debug")
 	)
 	flag.Parse()
 	LogStart(os.Args, *logLevel)
-	clock := NewClock(NewCmdSound(*sound))
+	sound := NewCmdSound(*soundCmd)
+	sound = LoggedSound(sound, *logLevel)
+	clock := NewClock(sound)
 	clock = LoggedClock(clock, *logLevel)
-	handler := http.FileServer(http.Dir(*assets))
+	handler := http.FileServer(http.Dir(*assetsDir))
 	handler = NewAlarmHandler(clock, handler)
 	handler = LoggedHandler(handler, *logLevel)
-	return http.ListenAndServe(*addr, handler)
+	return http.ListenAndServe(*httpAddr, handler)
 }
 
 // NewClock returns a new Clock that plays the given sound when the alarm goes
@@ -94,7 +96,9 @@ func (c *clock) Set(alarm Alarm) {
 		}
 		// set a timer for playing the alarm sound
 		c.timer = time.AfterFunc(when.Sub(now), func() {
-			c.sound.Play()
+			for {
+				c.sound.Play()
+			}
 		})
 	}
 	// update the alarm
