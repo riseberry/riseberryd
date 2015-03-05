@@ -5,7 +5,6 @@ package main
 import (
 	"encoding/json"
 	"flag"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -91,7 +90,6 @@ func (c *clock) Set(alarm Alarm) time.Duration {
 	now := time.Now()
 	zone := time.FixedZone("", alarm.Zone)
 	when := time.Date(now.Year(), now.Month(), now.Day(), alarm.Hour, alarm.Minute, 0, 0, zone)
-	fmt.Printf("%s\n", when)
 	// if the time is in the past, this means the next day is meant
 	if when.Before(now) {
 		when = when.AddDate(0, 0, 1)
