@@ -1,0 +1,10 @@
+digraph {
+  graph [rankdir=LR]
+  unset -> set [label="PUT /alarm"]
+  set -> set [label="PUT /alarm"]
+  set -> unset [label="press button"]
+  set -> unset [label="PUT /alarm"]
+  set -> playing [label="time reached"]
+  playing -> unset [label="press button"]
+  playing -> playing
+}
