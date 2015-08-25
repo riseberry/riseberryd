@@ -1,57 +1,106 @@
-package main
+package riseberryd
 
 import (
 	"bytes"
-	"os/exec"
+	"fmt"
 )
 
-import "text/template"
+import "os/exec"
 
-// NewCmdPlayer returns a new player that plays a sound by executing the given
-// shell command which is expected to contain a {{.File}} placeholder.
-func NewCmdPlayer(cmd string) (Player, error) {
-	if tmp, err := template.New("cmd").Parse(cmd); err != nil {
-		return nil, err
-	} else {
-		return &cmdPlayer{tmp: tmp}
-	}
-}
-
-// Player defines an interface for playing sound files.
+// Player defines an interface for playing sound.
 type Player interface {
-	// Play plays the given sound file and returns when it is done.
-	Play(file string) error
-	// Stop stops the currently playing sound (if any) and causes Play to return.
-	Stop() error
+	// Play plays until it's done, or returns an error. Calling Play while
+	// another Play is running, implicitly stops the other Play.
+	Play() error
+	// Stop stops the player and returns when it has stopped.
+	Stop()
+	// Close stops and closes the Player.
+	Close()
 }
 
-// cmdPlayer implements the layer interface.
-type cmdPlayer struct {
-	tmp *template.Template
-	cmd *exec.Cmd
-}
-
-// Play plays the given
-func (p *cmdPlayer) Play(file string) error {
-	buf := bytes.NewBuffer(nil)
-	if err := p.tmp.Execute(buf, struct {
-		File string
-	}{File: file}); err != nil {
-		return err
+// NewPlayer returns a new Player that plays the given sound by executing the
+// given cmd with the file as the first argument.
+func NewPlayer(cmd, file string) Player {
+	p := &player{
+		cmd:   cmd,
+		file:  file,
+		play:  make(chan chan error),
+		stop:  make(chan chan struct{}),
+		close: make(chan chan struct{}),
 	}
-	p.cmd = exec.Command("/bin/sh", "-c", buf.String())
-	return p.cmd.Run()
+	go p.loop()
+	return p
 }
 
-//NewCmdSound returns a sound that is played by invoking the given shell cmd.
-//func NewCmdSound(cmd string) Sound {
-//return cmdSound(cmd)
-//}
+// player implements the Player interface.
+type player struct {
+	cmd   string
+	file  string
+	play  chan chan error
+	stop  chan chan struct{}
+	close chan chan struct{}
+}
 
-//cmdSound implements the Sound interface.
-//type cmdSound string
+// loop handles player requests.
+func (p *player) loop() {
+	var cmd *exec.Cmd
+	for {
+		select {
+		case ch := <-p.play:
+			syncKill(cmd)
+			cmd = exec.Command(p.cmd, p.file)
+			out := bytes.NewBuffer(nil)
+			cmd.Stdout = out
+			cmd.Stderr = out
+			if err := cmd.Start(); err != nil {
+				cmd = nil
+				ch <- err
+				continue
+			}
+			go func(cmd *exec.Cmd, out fmt.Stringer) {
+				err := cmd.Wait()
+				if err != nil {
+					err = fmt.Errorf("%s: %s", err, out)
+				}
+				ch <- err
+			}(cmd, out)
+		case ch := <-p.stop:
+			syncKill(cmd)
+			ch <- struct{}{}
+		case ch := <-p.close:
+			syncKill(cmd)
+			ch <- struct{}{}
+			return
+		}
+	}
+}
 
-//Play is part of the Sound interface.
-//func (c cmdSound) Play() error {
-//return exec.Command("/bin/sh", "-c", string(c)).Run()
-//}
+// syncKill kills the given cmd if it's running and waits until it exists.
+func syncKill(cmd *exec.Cmd) {
+	if cmd == nil || cmd.Process == nil {
+		return
+	}
+	cmd.Process.Kill()
+	cmd.Wait()
+}
+
+// Play is part of the Player interface.
+func (p *player) Play() error {
+	ch := make(chan error, 1)
+	p.play <- ch
+	return <-ch
+}
+
+// Stop is part of the Player interface.
+func (p *player) Stop() {
+	ch := make(chan struct{}, 1)
+	p.stop <- ch
+	<-ch
+}
+
+// Close is part of the Player interface.
+func (p *player) Close() {
+	ch := make(chan struct{}, 1)
+	p.close <- ch
+	<-ch
+}

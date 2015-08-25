@@ -1,9 +1,8 @@
-package main
+package riseberryd
 
 import (
 	"log"
 	"net/http"
-	"time"
 )
 
 func LogStart(args []string, level int) {
@@ -43,45 +42,45 @@ func (l *loggedResponseWriter) WriteHead(code int) {
 	l.ResponseWriter.WriteHeader(code)
 }
 
-func LoggedClock(clock Clock, level int) Clock {
-	if level <= 0 {
-		return clock
-	}
-	return &loggedClock{clock: clock, level: level}
-}
+//func LoggedClock(clock Clock, level int) Clock {
+//if level <= 0 {
+//return clock
+//}
+//return &loggedClock{clock: clock, level: level}
+//}
 
-type loggedClock struct {
-	clock Clock
-	level int
-}
+//type loggedClock struct {
+//clock Clock
+//level int
+//}
 
-func (c *loggedClock) Get() Alarm {
-	alarm := c.clock.Get()
-	if c.level > 1 {
-		log.Printf("clock: get alarm=%#v", alarm)
-	}
-	return alarm
-}
+//func (c *loggedClock) Get() Alarm {
+//alarm := c.clock.Get()
+//if c.level > 1 {
+//log.Printf("clock: get alarm=%#v", alarm)
+//}
+//return alarm
+//}
 
-func (c *loggedClock) Set(alarm Alarm) time.Duration {
-	duration := c.clock.Set(alarm)
-	log.Printf("clock: set alarm=%#v duration=%s", alarm, duration)
-	return duration
-}
+//func (c *loggedClock) Set(alarm Alarm) time.Duration {
+//duration := c.clock.Set(alarm)
+//log.Printf("clock: set alarm=%#v duration=%s", alarm, duration)
+//return duration
+//}
 
-func LoggedSound(sound Sound, level int) Sound {
-	if level <= 0 {
-		return sound
-	}
-	return &loggedSound{sound: sound}
-}
+//func LoggedSound(sound Sound, level int) Sound {
+//if level <= 0 {
+//return sound
+//}
+//return &loggedSound{sound: sound}
+//}
 
-type loggedSound struct {
-	sound Sound
-}
+//type loggedSound struct {
+//sound Sound
+//}
 
-func (s *loggedSound) Play() error {
-	err := s.sound.Play()
-	log.Printf("played sound err=%s", err)
-	return err
-}
+//func (s *loggedSound) Play() error {
+//err := s.sound.Play()
+//log.Printf("played sound err=%s", err)
+//return err
+//}
