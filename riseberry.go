@@ -43,7 +43,7 @@ type riseberry struct {
 func (r *riseberry) loop() {
 	var (
 		alarm Alarm
-		play  = make(<-chan time.Time)
+		play  <-chan time.Time
 	)
 	for {
 		select {
@@ -55,7 +55,7 @@ func (r *riseberry) loop() {
 				t := alarm.Time(now)
 				play = time.After(t.Sub(now))
 			} else {
-				play = make(<-chan time.Time)
+				play = nil
 			}
 		case <-play:
 			alarm.Enabled = false
