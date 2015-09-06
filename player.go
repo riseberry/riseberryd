@@ -3,6 +3,7 @@ package riseberryd
 import (
 	"bytes"
 	"fmt"
+	"syscall"
 )
 
 import "os/exec"
@@ -49,6 +50,7 @@ func (p *player) loop() {
 		case ch := <-p.play:
 			syncKill(cmd)
 			cmd = exec.Command(p.cmd, p.file)
+			cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 			out := bytes.NewBuffer(nil)
 			cmd.Stdout = out
 			cmd.Stderr = out
@@ -80,7 +82,7 @@ func syncKill(cmd *exec.Cmd) {
 	if cmd == nil || cmd.Process == nil {
 		return
 	}
-	cmd.Process.Kill()
+	syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
 	cmd.Wait()
 }
 
